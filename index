@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viersen Voting Record</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #0056b3;
+        }
+        .category {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .category:hover {
+            background: #0056b3;
+        }
+        .bills {
+            display: none;
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .bill {
+            background: white;
+            padding: 15px;
+            margin: 5px 0;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .vote {
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+    <script>
+        async function fetchVotes() {
+            const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQPGVBOLe2YaIaBet5IukMCwZuq63mprVbF-4THjVS9caMQntmF6GmKzHTH-UZiCg/pub?gid=1127484512&single=true&output=csv";
+            try {
+                const response = await fetch(url);
+                const text = await response.text();
+                const rows = text.split("\n").map(row => row.split(","));
+                
+                let categories = {};
+                rows.slice(1).forEach(row => {
+                    const [bill, title, vote, category] = row;
+                    if (!categories[category]) categories[category] = [];
+                    categories[category].push({ bill, title, vote });
+                });
+                
+                const container = document.getElementById("categories");
+                for (let category in categories) {
+                    let categoryDiv = document.createElement("div");
+                    categoryDiv.className = "category";
+                    categoryDiv.innerText = category;
+                    
+                    let billsDiv = document.createElement("div");
+                    billsDiv.className = "bills";
+                    
+                    categories[category].forEach(billData => {
+                        let billDiv = document.createElement("div");
+                        billDiv.className = "bill";
+                        billDiv.innerHTML = `<strong>${billData.bill} - ${billData.title}</strong> <span class='vote'>${billData.vote}</span>`;
+                        billsDiv.appendChild(billDiv);
+                    });
+                    
+                    categoryDiv.addEventListener("click", () => {
+                        billsDiv.style.display = (billsDiv.style.display === "block") ? "none" : "block";
+                    });
+                    
+                    container.appendChild(categoryDiv);
+                    container.appendChild(billsDiv);
+                }
+            } catch (error) {
+                console.error("Error fetching data: ", error);
+            }
+        }
+        window.onload = fetchVotes;
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Viersen Voting Record</h1>
+        <p>Click on a category to expand and see the relevant bills and voting records.</p>
+        <div id="categories"></div>
+    </div>
+</body>
+</html>
