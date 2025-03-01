@@ -5,43 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Viersen Voting Record</title>
     <style>
+        /* General Page Styling */
         body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            padding: 0;
-            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f9;
+            margin: 0;
+            padding: 20px;
         }
+        
         h1 {
             text-align: center;
-            color: #333;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            font-size: 28px;
         }
+
+        /* Filter Container */
         .filter-container {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 15px;
             margin-bottom: 20px;
         }
+
         select {
-            padding: 8px;
+            padding: 10px 12px;
+            font-size: 16px;
+            border: 2px solid #0056b3;
+            border-radius: 5px;
+            background-color: white;
+            color: #333;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        select:hover {
+            border-color: #003d80;
+            background-color: #f0f0f0;
+        }
+
+        /* Table Styling */
+        table {
+            width: 90%;
+            max-width: 1200px;
+            margin: auto;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        th {
+            background-color: #0056b3;
+            color: white;
+            text-align: center;
+            padding: 12px;
             font-size: 16px;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        th, td {
+
+        td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
+            font-size: 15px;
         }
-        th {
-            background-color: #007bff;
-            color: white;
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
         }
+
         tr:hover {
-            background-color: #f1f1f1;
+            background-color: #eef3ff;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            color: #555;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -58,18 +100,10 @@
 
         <select id="categoryFilter">
             <option value="all">Filter by Category</option>
-            <option value="COVID-19 Measures">COVID-19 Measures</option>
-            <option value="Legislation & Governance">Legislation & Governance</option>
-            <option value="Justice & Public Safety">Justice & Public Safety</option>
-            <option value="Budget & Government Spending">Budget & Government Spending</option>
-            <option value="Health & Healthcare">Health & Healthcare</option>
-            <option value="Indigenous & Social Issues">Indigenous & Social Issues</option>
-            <option value="International Affairs & Trade">International Affairs & Trade</option>
-            <option value="Environment & Climate">Environment & Climate</option>
-            <option value="Labour & Employment">Labour & Employment</option>
-            <option value="Infrastructure & Transportation">Infrastructure & Transportation</option>
         </select>
     </div>
+
+    <p class="loading">Loading data from Google Sheets...</p>
 
     <table>
         <thead>
@@ -86,25 +120,18 @@
     </table>
 
     <script>
-        // Replace with your Google Sheet ID
-        const sheetId = "1fxoIRkPOYeOReGjRu5xxgEQSr3OcxoFhl8pyaOhluWY"; // Use your actual sheet ID
-
-        // URL to fetch data in JSON format
+        const sheetId = "1fxoIRkPOYeOReGjRu5xxgEQSr3OcxoFhl8pyaOhluWY";  // Your actual Google Sheet ID
         const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
 
-        let voteData = []; // Global variable to hold fetched data
+        let voteData = []; // Holds all data
 
-        // Function to fetch data from Google Sheets
         async function fetchGoogleSheetData() {
             try {
                 const response = await fetch(sheetUrl);
                 const text = await response.text();
+                const json = JSON.parse(text.substring(47, text.length - 2)); // Google Sheets wraps JSON in weird syntax
 
-                // Extract JSON from Google Sheets response
-                const json = JSON.parse(text.substring(47, text.length - 2));
                 const rows = json.table.rows;
-
-                // Map data into an array
                 voteData = rows.map(row => ({
                     bill: row.c[0]?.v || "N/A",
                     title: row.c[1]?.v || "N/A",
@@ -112,15 +139,15 @@
                     category: row.c[3]?.v || "N/A"
                 }));
 
-                // Display the table
+                document.querySelector(".loading").style.display = "none"; // Hide loading text
+                populateCategoryFilter();
                 displayTable(voteData);
-
             } catch (error) {
                 console.error("Error fetching data:", error);
+                document.querySelector(".loading").textContent = "Error loading data.";
             }
         }
 
-        // Function to display the table
         function displayTable(data) {
             const tableBody = document.getElementById("voteTable");
             tableBody.innerHTML = ""; // Clear existing rows
@@ -130,4 +157,45 @@
                 tr.innerHTML = `
                     <td>${row.bill}</td>
                     <td>${row.title}</td>
-                   
+                    <td style="text-align: center; font-weight: bold;">${row.vote}</td>
+                    <td>${row.category}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function populateCategoryFilter() {
+            const categoryFilter = document.getElementById("categoryFilter");
+            const categories = [...new Set(voteData.map(item => item.category))].sort();
+            
+            categories.forEach(category => {
+                const option = document.createElement("option");
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            });
+        }
+
+        function filterTable() {
+            const voteFilter = document.getElementById("voteFilter").value;
+            const categoryFilter = document.getElementById("categoryFilter").value;
+
+            const filteredData = voteData.filter(row => {
+                const matchesVote = voteFilter === "all" || row.vote === voteFilter;
+                const matchesCategory = categoryFilter === "all" || row.category === categoryFilter;
+                return matchesVote && matchesCategory;
+            });
+
+            displayTable(filteredData);
+        }
+
+        // Event Listeners for Dropdowns
+        document.getElementById("voteFilter").addEventListener("change", filterTable);
+        document.getElementById("categoryFilter").addEventListener("change", filterTable);
+
+        // Fetch and display data on page load
+        fetchGoogleSheetData();
+    </script>
+
+</body>
+</html>
