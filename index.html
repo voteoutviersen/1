@@ -6,110 +6,128 @@
     <title>Viersen Voting Record</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            text-align: center;
-            background-color: #f8f9fa;
-            margin: 0;
+            font-family: Arial, sans-serif;
+            margin: 40px;
             padding: 0;
-            color: #333;
-        }
-        .container {
-            max-width: 900px;
-            margin: 50px auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: #f8f9fa;
         }
         h1 {
-            color: #0056b3;
-        }
-        .category {
-            background: #007bff;
-            color: white;
-            padding: 15px;
-            margin: 10px 0;
-            cursor: pointer;
-            border-radius: 5px;
-            font-weight: bold;
             text-align: center;
+            color: #333;
         }
-        .category:hover {
-            background: #0056b3;
-        }
-        .bills {
-            display: none;
-            background: #e9ecef;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        .bill {
-            background: white;
-            padding: 15px;
-            margin: 5px 0;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        .filter-container {
             display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
         }
-        .vote {
-            font-weight: bold;
-            color: #28a745;
+        select {
+            padding: 8px;
+            font-size: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
         }
     </style>
-    <script>
-        async function fetchVotes() {
-            const url = "https://docs.google.com/spreadsheets/d/1p0ftXEuX8dan3MJQ2OQ242pXj2QRAc6T/edit?usp=sharing&ouid=101615623604384591323&rtpof=true&sd=true";
-            try {
-                const response = await fetch(url);
-                const text = await response.text();
-                const rows = text.split("\n").map(row => row.split(","));
-                
-                let categories = {};
-                rows.slice(1).forEach(row => {
-                    const [bill, title, vote, category] = row;
-                    if (!categories[category]) categories[category] = [];
-                    categories[category].push({ bill, title, vote });
-                });
-                
-                const container = document.getElementById("categories");
-                for (let category in categories) {
-                    let categoryDiv = document.createElement("div");
-                    categoryDiv.className = "category";
-                    categoryDiv.innerText = category;
-                    
-                    let billsDiv = document.createElement("div");
-                    billsDiv.className = "bills";
-                    
-                    categories[category].forEach(billData => {
-                        let billDiv = document.createElement("div");
-                        billDiv.className = "bill";
-                        billDiv.innerHTML = `<strong>${billData.bill} - ${billData.title}</strong> <span class='vote'>${billData.vote}</span>`;
-                        billsDiv.appendChild(billDiv);
-                    });
-                    
-                    categoryDiv.addEventListener("click", () => {
-                        billsDiv.style.display = (billsDiv.style.display === "block") ? "none" : "block";
-                    });
-                    
-                    container.appendChild(categoryDiv);
-                    container.appendChild(billsDiv);
-                }
-            } catch (error) {
-                console.error("Error fetching data: ", error);
-            }
-        }
-        window.onload = fetchVotes;
-    </script>
 </head>
 <body>
-    <div class="container">
-        <h1>Viersen Voting Record</h1>
-        <p>Click on a category to expand and see the relevant bills and voting records.</p>
-        <div id="categories"></div>
+
+    <h1>Viersen Voting Record</h1>
+
+    <div class="filter-container">
+        <select id="voteFilter">
+            <option value="all">Filter by Vote</option>
+            <option value="For">For</option>
+            <option value="Against">Against</option>
+        </select>
+
+        <select id="categoryFilter">
+            <option value="all">Filter by Category</option>
+            <option value="COVID-19 Measures">COVID-19 Measures</option>
+            <option value="Legislation & Governance">Legislation & Governance</option>
+            <option value="Justice & Public Safety">Justice & Public Safety</option>
+            <option value="Budget & Government Spending">Budget & Government Spending</option>
+            <option value="Health & Healthcare">Health & Healthcare</option>
+            <option value="Indigenous & Social Issues">Indigenous & Social Issues</option>
+            <option value="International Affairs & Trade">International Affairs & Trade</option>
+            <option value="Environment & Climate">Environment & Climate</option>
+            <option value="Labour & Employment">Labour & Employment</option>
+            <option value="Infrastructure & Transportation">Infrastructure & Transportation</option>
+        </select>
     </div>
-</body>
-</html>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Bill</th>
+                <th>Title</th>
+                <th>Viersen's Vote</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody id="voteTable">
+            <!-- Data will be inserted here -->
+        </tbody>
+    </table>
+
+    <script>
+        // Replace with your Google Sheet ID
+        const sheetId = "1fxoIRkPOYeOReGjRu5xxgEQSr3OcxoFhl8pyaOhluWY"; // Use your actual sheet ID
+
+        // URL to fetch data in JSON format
+        const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+
+        let voteData = []; // Global variable to hold fetched data
+
+        // Function to fetch data from Google Sheets
+        async function fetchGoogleSheetData() {
+            try {
+                const response = await fetch(sheetUrl);
+                const text = await response.text();
+
+                // Extract JSON from Google Sheets response
+                const json = JSON.parse(text.substring(47, text.length - 2));
+                const rows = json.table.rows;
+
+                // Map data into an array
+                voteData = rows.map(row => ({
+                    bill: row.c[0]?.v || "N/A",
+                    title: row.c[1]?.v || "N/A",
+                    vote: row.c[2]?.v || "N/A",
+                    category: row.c[3]?.v || "N/A"
+                }));
+
+                // Display the table
+                displayTable(voteData);
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        // Function to display the table
+        function displayTable(data) {
+            const tableBody = document.getElementById("voteTable");
+            tableBody.innerHTML = ""; // Clear existing rows
+
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.bill}</td>
+                    <td>${row.title}</td>
+                   
